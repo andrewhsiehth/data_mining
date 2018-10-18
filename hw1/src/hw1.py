@@ -97,7 +97,7 @@ class Apriori:
         Ck = C1 
         Lk = L1 
         while Ck:  
-            print('iter: {0} len(C{0}): {} len(L{0}): {}'.format(len(L), len(C[-1]), len(L[-1]))) 
+            print('iter: {0} len(C{0}): {1} len(L{0}): {2}'.format(len(L), len(C[-1]), len(L[-1]))) 
             # print('C{}:'.format(len(L)), Ck)  
             # print('L{}:'.format(len(L)), Lk) 
             C.append(Ck) 
