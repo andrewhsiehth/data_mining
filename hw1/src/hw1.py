@@ -30,14 +30,6 @@ class Database:
             self.transactions.append(frozenset(line.strip().split(' '))) 
         return 
 
-class AssociationRule: 
-    def __init__(self, X, Y, support, confidence): 
-        self.X = X 
-        self.Y = Y 
-        self.support = support 
-        self.confidence = confidence 
-
-
 
 class Apriori: 
     def __init__(self, minSupport, minConfidence): 
@@ -80,7 +72,7 @@ class Apriori:
         transactionCounts = len(db.transactions)   
         for l in chain(*L): 
             for s in generateProperNoneEmptySubsets(l): 
-                diff = l - s 
+                diff = l.difference(s)  
                 support = C[len(l)].get(l) / transactionCounts 
                 confidence = C[len(l)].get(l) / C[len(diff)].get(diff)  
                 if confidence >= self.minConfidence: 
@@ -96,12 +88,10 @@ class Apriori:
         L1 = self.generateLk(C1, db)  
         Ck = C1 
         Lk = L1 
-        while Ck:  
-            print('iter: {0} len(C{0}): {1} len(L{0}): {2}'.format(len(L), len(C[-1]), len(L[-1]))) 
-            # print('C{}:'.format(len(L)), Ck)  
-            # print('L{}:'.format(len(L)), Lk) 
+        while Lk:  
             C.append(Ck) 
             L.append(Lk)   
+            print('iter: {0} len(C{0}): {1} len(L{0}): {2}'.format(len(L)-1, len(C[-1]), len(L[-1]))) 
             Ck = self.generateCk(L[-1], db) 
             Lk = self.generateLk(Ck, db) 
         associationRules = self.generateAssociationRules(L, C, db)  
