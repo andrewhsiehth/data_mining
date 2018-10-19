@@ -35,26 +35,48 @@ class Apriori:
     def __init__(self, minSupport, minConfidence): 
         self.minSupport = minSupport 
         self.minConfidence = minConfidence 
+        self.itemsets = {} 
 
     @timeit
     def generateC1(self, db): 
         C1 = defaultdict(int) 
         for transaction in db.transactions: 
             for item in transaction: 
-                C1[frozenset([item])] += 1 
+                candidate = frozenset([item])
+                C1[self.itemsets.setdefault(candidate, candidate)] += 1 
         return C1 
 
-    @timeit
-    def generateCk(self, Lk_minus1, db): 
-        Ck = defaultdict(int) 
-        for itemsetI, itemsetJ in combinations(Lk_minus1, r=2): 
-            candidate = itemsetI.union(itemsetJ) 
+    @timeit 
+    def generateCk(self, itemsets): 
+        Ck = defaultdict(int)  
+        for itemsetI, itemsetJ in combinations(itemsets, r=2):
+            candidate = itemsetI | itemsetJ 
             if len(candidate) == len(itemsetI)+1: 
-                if candidate not in Ck: 
-                    for transaction in db.transactions: 
-                        if candidate.issubset(transaction):
-                            Ck[candidate] += 1 
+                Ck[self.itemsets.setdefault(candidate, candidate)] = 0  
         return Ck 
+
+    @timeit
+    def scan(self, Ck, db): 
+        for candidate in Ck: 
+            for transaction in db.transactions: 
+                if candidate <= transaction: 
+                    Ck[candidate] += 1 
+                    assert candidate is self.itemsets.get(candidate) 
+        return Ck 
+
+
+    # @timeit
+    # def __generateCk(self, Lk_minus1, db): 
+    #     Ck = defaultdict(int) 
+    #     for itemsetI, itemsetJ in combinations(Lk_minus1, r=2): 
+    #         candidate = itemsetI | itemsetJ
+    #         if len(candidate) == len(itemsetI)+1: 
+    #             if candidate not in Ck: 
+    #                 for transaction in db.transactions: 
+    #                     if candidate <= transaction: 
+    #                         Ck[candidate] += 1 
+    #     return Ck 
+
 
     @timeit
     def generateLk(self, Ck, db): 
@@ -64,6 +86,7 @@ class Apriori:
             support = count / transactionCounts 
             if support >= self.minSupport: 
                 Lk.add(candidate) 
+                assert candidate is self.itemsets.get(candidate) 
         return Lk  
 
     @timeit 
@@ -72,7 +95,7 @@ class Apriori:
         transactionCounts = len(db.transactions)   
         for l in chain(*L): 
             for s in generateProperNoneEmptySubsets(l): 
-                diff = l.difference(s)  
+                diff = l - s  
                 support = C[len(l)].get(l) / transactionCounts 
                 confidence = C[len(l)].get(l) / C[len(diff)].get(diff)  
                 if confidence >= self.minConfidence: 
@@ -82,6 +105,7 @@ class Apriori:
 
     @timeit 
     def run(self, db): 
+        self.itemsets = {}
         C = [defaultdict(int)]  
         L = [set()]    
         C1 = self.generateC1(db) 
@@ -92,7 +116,8 @@ class Apriori:
             C.append(Ck) 
             L.append(Lk)   
             print('iter: {0} len(C{0}): {1} len(L{0}): {2}'.format(len(L)-1, len(C[-1]), len(L[-1]))) 
-            Ck = self.generateCk(L[-1], db) 
+            Ck = self.generateCk(L[-1]) 
+            Ck = self.scan(Ck, db)  
             Lk = self.generateLk(Ck, db) 
         associationRules = self.generateAssociationRules(L, C, db)  
         return L, associationRules, C  
