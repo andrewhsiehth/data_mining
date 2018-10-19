@@ -3,6 +3,16 @@ from itertools import combinations
 from itertools import product 
 from itertools import chain 
 import time 
+import sys 
+
+def logger(formatter=lambda x, y: None, out=sys.stdout): 
+    def dec(func): 
+        def decFunc(*args, **kwargs): 
+            funcResult = func(*args, **kwargs) 
+            formatter(funcResult, out) 
+            return funcResult 
+        return decFunc 
+    return dec 
 
 
 def timeit(func): 
@@ -65,19 +75,6 @@ class Apriori:
         return Ck 
 
 
-    # @timeit
-    # def __generateCk(self, Lk_minus1, db): 
-    #     Ck = defaultdict(int) 
-    #     for itemsetI, itemsetJ in combinations(Lk_minus1, r=2): 
-    #         candidate = itemsetI | itemsetJ
-    #         if len(candidate) == len(itemsetI)+1: 
-    #             if candidate not in Ck: 
-    #                 for transaction in db.transactions: 
-    #                     if candidate <= transaction: 
-    #                         Ck[candidate] += 1 
-    #     return Ck 
-
-
     @timeit
     def generateLk(self, Ck, db): 
         Lk = set() 
@@ -88,20 +85,6 @@ class Apriori:
                 Lk.add(candidate) 
                 assert candidate is self.itemsets.get(candidate) 
         return Lk  
-
-    @timeit 
-    def generateAssociationRules(self, L, C, db): 
-        associationRules = []
-        transactionCounts = len(db.transactions)   
-        for l in chain(*L): 
-            for s in generateProperNoneEmptySubsets(l): 
-                diff = l - s  
-                support = C[len(l)].get(l) / transactionCounts 
-                confidence = C[len(l)].get(l) / C[len(diff)].get(diff)  
-                if confidence >= self.minConfidence: 
-                    associationRules.append((diff, s, support, confidence))  
-        return associationRules 
-
 
     @timeit 
     def generateLargeItemsets(self, db): 
@@ -121,7 +104,71 @@ class Apriori:
             Lk = self.generateLk(Ck, db) 
         return L, C  
 
+    @timeit 
+    def generateAssociationRules(self, L, C, db): 
+        associationRules = []
+        transactionCounts = len(db.transactions)   
+        for l in chain(*L): 
+            for s in generateProperNoneEmptySubsets(l): 
+                diff = l - s  
+                support = C[len(l)].get(l) / transactionCounts 
+                confidence = C[len(l)].get(l) / C[len(diff)].get(diff)  
+                if confidence >= self.minConfidence: 
+                    associationRules.append((diff, s, support, confidence))  
+        return associationRules 
 
-    def output(self, L, C): 
-        for l in sorted(chain(*L), key=lambda l: C[len(l)].get(l)):
-            print('{0} ({1})'.format(' '.join(sorted(l)), C[len(l)].get(l)))
+    def output(self, L, C, path):  
+    # def outputFormat(self, L, C, path):  
+        # print(sorted('{0} ({1})'.format(' '.join(sorted(l)), C[len(l)].get(l)) for l in chain(*L), key=len))
+        with open(path, mode='w') as f: 
+            f.writelines(sorted(['{0} ({1})\n'.format(' '.join(sorted(l)), C[len(l)].get(l)) for l in chain(*L)], key=lambda x: (len(x), x)))
+            f.close() 
+        return 
+
+
+@timeit 
+def runApriori(inputFile, outputFile, minSupport): 
+    db = Database() 
+    db.fromFile(path=inputFile) 
+    apriori = Apriori(minSupport=minSupport, minConfidence=0) 
+    L, C = apriori.generateLargeItemsets(db) 
+    apriori.output(L, C, path=outputFile) 
+    return 
+
+
+        
+if __name__ == '__main__': 
+    import os 
+    import pickle 
+    import argparse 
+    parser = argparse.ArgumentParser() 
+    parser.add_argument('-i', '--inputFile', required=True) 
+    parser.add_argument('-o', '--output', required=True) 
+    parser.add_argument('-s', '--minSuport', default=None)  
+    parser.add_argument('-d', '--debugFolder', default=None) 
+    args = parser.parse_args() 
+
+    if args.debugFolder: 
+        aMinSupport = [0.35, 0.3, 0.25, 0.2] 
+        aExecutionTime = []
+        for support in aMinSupport:         
+            startTime = time.time() 
+            runApriori(
+                inputFile=args.inputFile, 
+                outputFile=os.path.join(args.output, 'A{0:.2f}.log'.format(support)),  
+                minSupport=support 
+            ) 
+            endTime = time.time() 
+            executionTime = endTime - startTime 
+            aExecutionTime.append(executionTime) 
+        with open(os.path.join(args.debugFolder, 'apriori.log'), mode='w') as f: 
+            f.write('minSupport,executionTime\n') 
+            for s, e in zip(aMinSupport, aExecutionTime): 
+                f.write('{0:.2f},{1:.6f}\n'.format(s, e)) 
+            f.close() 
+    else: 
+        runApriori(inputFile=args.inputFile, outputFile=args.output, minSupport=args.minSuport) 
+
+
+
+
