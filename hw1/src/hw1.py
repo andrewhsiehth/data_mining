@@ -121,7 +121,7 @@ class Apriori:
     # def outputFormat(self, L, C, path):  
         # print(sorted('{0} ({1})'.format(' '.join(sorted(l)), C[len(l)].get(l)) for l in chain(*L), key=len))
         with open(path, mode='w') as f: 
-            f.writelines(sorted(['{0} ({1})\n'.format(' '.join(sorted(l)), C[len(l)].get(l)) for l in chain(*L)], key=lambda x: (len(x), x)))
+            f.writelines(sorted(['{0} ({1})\n'.format(' '.join(sorted(l, key=int)), C[len(l)].get(l)) for l in chain(*L)], key=lambda x: (len(x), x)))
             f.close() 
         return 
 
