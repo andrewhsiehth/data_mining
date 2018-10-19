@@ -104,7 +104,7 @@ class Apriori:
 
 
     @timeit 
-    def run(self, db): 
+    def generateLargeItemsets(self, db): 
         self.itemsets = {}
         C = [defaultdict(int)]  
         L = [set()]    
@@ -119,8 +119,7 @@ class Apriori:
             Ck = self.generateCk(L[-1]) 
             Ck = self.scan(Ck, db)  
             Lk = self.generateLk(Ck, db) 
-        associationRules = self.generateAssociationRules(L, C, db)  
-        return L, associationRules, C  
+        return L, C  
 
 
     def output(self, L, C): 
