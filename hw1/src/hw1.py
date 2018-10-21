@@ -48,7 +48,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser() 
     parser.add_argument('-i', '--inputFile', required=True) 
     parser.add_argument('-o', '--output', required=True) 
-    parser.add_argument('-s', '--minSuport', default=0, type=int)   
+    parser.add_argument('-s', '--minSuport', default=0, type=float)   
     parser.add_argument('-d', '--debugFolder', default=None) 
     parser.add_argument('-a', '--apriori', default=False, action='store_true')
     parser.add_argument('-e', '--eclat', default=False, action='store_true')
