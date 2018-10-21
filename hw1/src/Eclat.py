@@ -1,50 +1,49 @@
+from collections import defaultdict 
+from itertools import combinations 
 
+from util import timeit 
 
-class Eclat: 
-    class Database: 
-        def __init__(self):
-            self.transactions = None 
-            self.itemIndex = {} 
-            self.items = [] 
-
-        def addItem(self, item):
-            if item not in self.itemIndex:
-                self.itemIndex[item] = len(self.items) 
-                self.items.append(item) 
-            return  
-
-        def fromFile(self, path, sep=' '): 
-            with open(path, mode='r') as f: 
-                lines = f.readlines() 
-                f.close() 
-            for line in lines: 
-                transaction = [] 
-                for item in line.strip().split(sep): 
-                    self.addItem(item) 
-                    transaction.append(self.itemIndex[item]) 
-                self.transactions.append(transaction) 
-            return 
-    
+class Eclat:  
     def __init__(self, minSupport, minConfidence): 
         self.minSupport = minSupport 
         self.minConfidence = minConfidence 
-        self.db = None 
 
-    def initDb(self, path): 
-        self.db = self.Database() 
-        self.db.fromFile(path) 
-        return 
+    @timeit 
+    def generateBitvectors(self, db): 
+        bitvectors = defaultdict(int) 
+        for tIdx, transaction in enumerate(db.transactions):  
+            for itemIdx in transaction: 
+                bitvectors[frozenset([itemIdx])] |= (1 << tIdx) 
+        return bitvectors 
 
+    @timeit 
+    def prune(self, bitvectors, db):  
+        pruned = defaultdict(int) 
+        transactionCounts = len(db.transactions) 
+        for itemset, bitvector in bitvectors.items(): 
+            count = bin(bitvector).count('1') 
+            if count / transactionCounts >= self.minSupport: 
+                pruned[itemset] = count  
+        return pruned 
 
-    def transactions2bitvectors(self): 
-        bitvectors = [] 
-        for transaction in self.db.transactions: 
-            bitvector = 0 
-            for item in transaction: 
-                bitvector |= (1 << item) 
-            bitvectors.append(bitvector) 
-        return bitvector 
+    @timeit 
+    def mining(self, bitvectors, db): 
+        largeItemsets = defaultdict(int) 
+        pruned = self.prune(bitvectors, db)   
+        if not pruned: 
+            return largeItemsets 
+        largeItemsets.update(pruned) 
+        itemsets = list(pruned.keys())
+        for i, itemsetI in enumerate(itemsets): 
+            candidates = defaultdict(int) 
+            for j, itemsetJ in enumerate(itemsets[i+1:]):
+                candidate = itemsetI | itemsetJ 
+                candidates[candidate] = bitvectors.get(itemsetI) & bitvectors.get(itemsetJ) 
+            largeItemsets.update(self.mining(candidates, db)) 
+        return largeItemsets  
 
-    
-
-    
+    @timeit 
+    def generateLargeItemsets(self, db):
+        bitvectors = self.generateBitvectors(db) 
+        largeItemsets = self.mining(bitvectors, db) 
+        return largeItemsets 
