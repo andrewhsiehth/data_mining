@@ -45,7 +45,6 @@ if __name__ == '__main__':
     import os 
     import pickle 
     import argparse 
-    import matplotlib.pyplot as plt 
     parser = argparse.ArgumentParser() 
     parser.add_argument('-i', '--inputFile', required=True) 
     parser.add_argument('-o', '--output', required=True) 
